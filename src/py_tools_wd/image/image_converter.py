@@ -128,4 +128,5 @@ def to_file(image, path: FilePath):
         pil_to_file(image, path)
     elif isinstance(image, NPImage):
         np_to_file(image, path)
-    raise Exception('image type error')
+    else:
+        raise Exception('image type error')
