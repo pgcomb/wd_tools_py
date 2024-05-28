@@ -1,7 +1,4 @@
 import logging
-import threading
-
-from confluent_kafka import Producer, Consumer
 
 logger = logging.getLogger(__name__)
 
