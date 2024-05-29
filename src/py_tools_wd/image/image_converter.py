@@ -14,6 +14,15 @@ Base64Image = str
 ImageFormat = str
 
 
+def remove_base64_header(base64_string):
+    if base64_string.startswith("data:image"):
+        # 寻找逗号的位置，逗号后面就是base64编码的数据部分
+        header_end = base64_string.find(",")
+        if header_end != -1:
+            return base64_string[header_end + 1:]
+    return base64_string
+
+
 def pil_to_np(image: PIL_Image) -> (NPRgb, Mask, ImageFormat):
     if image.mode == 'RGBA':
         rgba = np.array(image)
@@ -50,6 +59,7 @@ def pil_to_base64(image: PIL_Image) -> Base64Image:
 
 
 def base64_to_pil(image: Base64Image) -> PIL_Image:
+    image = remove_base64_header(image)
     image = base64.b64decode(image)
     image = io.BytesIO(image)
     image = ImageUtil.open(image)

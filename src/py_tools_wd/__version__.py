@@ -1,7 +1,7 @@
 __title__ = "py-tools-wd"
 __description__ = "wd py tools"
 __url__ = "https://github.com/pgcomb/wd_tools_py"
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 # __build__ = 0x023202
 __author__ = ["Wang Dongxu", "Ma xiaohui"]
 __author_email__ = ["wangdongxudyx@163.com", ""]
