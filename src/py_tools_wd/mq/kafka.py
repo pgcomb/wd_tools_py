@@ -3,7 +3,7 @@ import threading
 
 from confluent_kafka import Producer, Consumer
 
-from channel import MqSender, MqReceiver
+from .channel import MqSender, MqReceiver
 
 logger = logging.getLogger(__name__)
 

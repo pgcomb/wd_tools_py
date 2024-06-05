@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 
-from channel import MqReceiver, MqSender
+from .channel import MqReceiver, MqSender
 import pika
 from pika.exchange_type import ExchangeType
 
