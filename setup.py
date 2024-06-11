@@ -56,7 +56,7 @@ setup(
     author=about["__author__"],
     author_email=about["__author_email__"],
     url=about["__url__"],
-    packages=["py_tools_wd/image", "py_tools_wd/mq"],
+    packages=["py_tools_wd/image", "py_tools_wd/mq","py_tools_wd/base"],
     package_data={"": ["LICENSE", "NOTICE"]},
     package_dir={"": "src"},
     include_package_data=True,

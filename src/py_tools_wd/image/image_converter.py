@@ -23,17 +23,18 @@ def remove_base64_header(base64_string):
     return base64_string
 
 
-def pil_to_np(image: PIL_Image) -> (NPRgb, Mask, ImageFormat):
-    if image.mode == 'RGBA':
-        rgba = np.array(image)
-        return rgba[:, :, :3], rgba[:, :, 3], image.format
-    elif image.mode != 'RGB':
-        return np.array(image), None, image.format
-    else:
-        return np.array(image), None, image.format
+def np_split(image: NPImage) -> (NPRgb, Mask):
+    mask = None
+    if (len(image.shape)) == 2:
+        image = np.stack((image, image, image), axis=-1)
+    elif len(image.shape) == 3:
+        if image.shape[2] == 4:
+            image = image[:, :, :3]
+            mask = image[:, :, 3]
+    return image, mask
 
 
-def np_to_pil(image: NPImage, mask: Mask = None) -> PIL_Image:
+def np_merge(image: NPImage, mask: Mask) -> NPImage:
     if (len(image.shape)) == 2:
         if mask is None:
             image = np.stack((image, image, image), axis=-1)
@@ -48,7 +49,21 @@ def np_to_pil(image: NPImage, mask: Mask = None) -> PIL_Image:
                 image = rgba_image
             elif image.shape[2] == 4:
                 image[:, :, 3] = mask
-    return ImageUtil.fromarray(image)
+    return image
+
+
+def pil_to_np(image: PIL_Image) -> (NPRgb, Mask, ImageFormat):
+    if image.mode == 'RGBA':
+        rgba = np.array(image)
+        return rgba[:, :, :3], rgba[:, :, 3], image.format
+    elif image.mode != 'RGB':
+        return np.array(image), None, image.format
+    else:
+        return np.array(image), None, image.format
+
+
+def np_to_pil(image: NPImage, mask: Mask = None) -> PIL_Image:
+    return ImageUtil.fromarray(np_merge(image, mask))
 
 
 def pil_to_base64(image: PIL_Image) -> Base64Image:
