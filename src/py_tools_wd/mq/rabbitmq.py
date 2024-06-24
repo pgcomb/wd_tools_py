@@ -62,9 +62,10 @@ class RabbitmqReceiver(MqReceiver):
         logger.info(f'consumer_channel_dict = {self.consumer_message_channel.__dict__}')
         logger.info(f'consumer_tag = {self.consumer_message_channel.consumer_tags}')
 
-        self.consumer_message_channel.exchange_declare(exchange=self.consumer_exchange,
-                                                       exchange_type=self.exchange_type,
-                                                       durable=True)
+        if self.consumer_exchange is not None:
+            self.consumer_message_channel.exchange_declare(exchange=self.consumer_exchange,
+                                                           exchange_type=self.exchange_type,
+                                                           durable=True)
         if self.consumer_queue is not None and self.consumer_routing_key is not None:
             self.consumer_message_channel.queue_declare(queue=self.consumer_queue, durable=True)
             self.consumer_message_channel.queue_bind(queue=self.consumer_queue, exchange=self.consumer_exchange,
@@ -73,7 +74,8 @@ class RabbitmqReceiver(MqReceiver):
     def __on_message_callback(self, channel, method, properties, message):
         logger.debug(f'message (type is {type(message)}) received through Queue {self.consumer_queue}: {message}')
 
-        thread = threading.Thread(target=super()._receive, args=[message])
+        thread = threading.Thread(target=super()._receive, args=[message],
+                                  kwargs={'method': method, "properties": properties})
         thread.start()
 
         while thread.is_alive():  # Loop while the thread is processing
