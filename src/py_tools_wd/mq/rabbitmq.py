@@ -141,7 +141,7 @@ class RabbitmqReceiver(MqReceiver):
 class RabbitmqSender(MqSender):
 
     def __init__(self, host="127.0.0.1", port=5672, username='admin', password='admin', virtual_host='/',
-                 heartbeat=None, producer_exchange=None, producer_routing_key=None):
+                 heartbeat=None, producer_exchange=None, producer_routing_key=None, exchange_type=ExchangeType.topic):
         super().__init__()
         self.host = host
         self.port = port
@@ -150,7 +150,7 @@ class RabbitmqSender(MqSender):
         self.virtual_host = virtual_host
         self.heartbeat = heartbeat
         self.producer_exchange = producer_exchange
-        self.exchange_type = ExchangeType.topic if producer_routing_key else ExchangeType.fanout
+        self.exchange_type = exchange_type
         self.producer_routing_key = producer_routing_key
         self.producer_message_channel = None
         self.proactive_invoke_stop_event = None

@@ -56,9 +56,10 @@ def pil_to_np(image: PIL_Image) -> (NPRgb, Mask, ImageFormat):
     if image.mode == 'RGBA':
         rgba = np.array(image)
         return rgba[:, :, :3], rgba[:, :, 3], image.format
-    elif image.mode != 'RGB':
+    elif image.mode == 'RGB':
         return np.array(image), None, image.format
     else:
+        image = image.convert('RGB')
         return np.array(image), None, image.format
 
 

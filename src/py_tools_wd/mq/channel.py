@@ -21,7 +21,7 @@ class MqReceiver:
         self.__callback = callback
         logger.info('mq receiver 设置回调完成')
 
-    def _receive(self, message):
+    def _receive(self, message, **kwargs):
         try:
             if isinstance(message, bytes):
                 logger.debug(f'接收bytes数据（type is {type(message)}），待转化: {message}')
@@ -30,7 +30,7 @@ class MqReceiver:
             if self.__callback is None:
                 logger.info('callback未定义')
             else:
-                self.__callback(message)
+                self.__callback(message, **kwargs)
         except:
             logger.error('消息处理异常', exc_info=True, stack_info=True)
 
