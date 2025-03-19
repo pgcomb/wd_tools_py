@@ -1,6 +1,6 @@
 import base64
 import io
-
+import cv2
 from PIL import Image as ImageUtil
 import numpy as np
 from PIL.Image import Image as PIL_Image
@@ -156,3 +156,12 @@ def to_file(image, path: FilePath):
         np_to_file(image, path)
     else:
         raise Exception('image type error')
+
+
+def fast_np_to_base64(image: np.ndarray):
+    success, encoded_image = cv2.imencode('.png', image)
+    if success:
+        img_bytes = encoded_image.tobytes()
+        return base64.b64encode(img_bytes).decode('utf-8')
+    else:
+        raise Exception('error')

@@ -1,4 +1,6 @@
+import numpy
 from PIL import ImageDraw, ImageFont, Image
+from importlib.resources import files
 
 
 def get_font(name, size):
@@ -12,7 +14,8 @@ def text_box(text, font):
 
 def paste_text(image: Image, xy, text, font, font_color=(255, 0, 0, 255), anchor='lt'):
     if isinstance(font, int):
-        font = get_font('AlibabaPuHuiTi-3-65-Medium.ttf', font)
+        font_path = files("py_tools_wd.image").joinpath("AlibabaPuHuiTi-3-65-Medium.ttf").as_posix()
+        font = get_font(font_path, font)
     x, y = xy
     text_w, text_h = text_box(text=text, font=font)
 
@@ -72,11 +75,15 @@ def paste_box(image: Image, xyxy, bg_color=None, outline_color=None, outline_wid
     return image
 
 
-def paste_image(image: Image, xy, wh, img: Image):
+def paste_image(image: Image, xy, wh, img: Image, alpha_coefficient=1.):
     image = image.convert('RGBA')
     if wh is not None:
         img = img.resize(wh)
     img = img.convert('RGBA')
+    if alpha_coefficient != 1.:
+        img_np = numpy.array(img)
+        img_np[:, :, 3] = img_np[:, :, 3] * alpha_coefficient
+        img = Image.fromarray(img_np.astype('uint8'))
     overlay = Image.new('RGBA', image.size, (255, 255, 255, 0))
     overlay.paste(img, box=xy)
     image = Image.alpha_composite(image, overlay)
