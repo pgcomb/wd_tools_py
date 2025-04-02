@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py_tools_wd"    # PyPI上的包名（全局唯一）
-version = "0.2.0"            # 版本号（如 0.1.0）
+version = "0.2.2"            # 版本号（如 0.1.0）
 description = "wdx tools"
 readme = "README.md"         # 项目说明文件路径
 requires-python = ">=3.9"
