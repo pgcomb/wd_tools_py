@@ -35,7 +35,7 @@ class LoggerWriter:
         pass
 
 
-def set_global_logging(log_type=None, log_level=None, log_dir=None, log_format=None):
+def set_global_logger(log_type=None, log_level=None, log_dir=None, log_format=None):
     concurrent = os.getenv('APP_LOG_CONCURRENT', '0')
     if concurrent == '0':
         from logging.handlers import TimedRotatingFileHandler
@@ -85,7 +85,7 @@ def set_global_logging(log_type=None, log_level=None, log_dir=None, log_format=N
     sys.stderr = LoggerWriter(logging.error)
 
 
-def get_file_logger(name="app", log_type="single_file", log_level=None, log_dir=None, log_format=0, sub_dir=''):
+def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_format=0, sub_dir=''):
     from logging.handlers import TimedRotatingFileHandler
     log_type = log_type or global_log_type
     level = log_level or global_level
@@ -106,6 +106,7 @@ def get_file_logger(name="app", log_type="single_file", log_level=None, log_dir=
     handlers = []
 
     if 'single_file' in log_type:
+        os.makedirs(os.path.join(log_dir, sub_dir), exist_ok=True)
         single_file_handler = logging.FileHandler(os.path.join(log_dir, sub_dir, f'{name}.log'))
         handlers.append(single_file_handler)
     if 'file' in log_type:
@@ -125,7 +126,7 @@ def get_file_logger(name="app", log_type="single_file", log_level=None, log_dir=
         handlers.append(error_file_handler)
     if 'console' in log_type:
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
+        console_handler.setLevel(level)
         console_handler.setFormatter(logging_formatter)
         handlers.append(console_handler)
 
