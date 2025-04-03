@@ -130,9 +130,65 @@ class StreamManager:
         return self
 
 
+class VideoToFrameIterator:
+
+    def __init__(self, iterator, video_path, **kwargs):
+        self.video_path = video_path
+        self.kwargs = kwargs
+        cap = cv2.VideoCapture(video_path)
+        self.width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.fps = cap.get(cv2.CAP_PROP_FPS)
+        self.frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+        self.iterator_func = iterator
+        self.iterator = iterator(video_path, **kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            # 尝试发送停止信号，适用于协程或生成器
+            self.iterator.send("stop")
+        except StopIteration:
+            pass
+        except AttributeError:
+            # 如果迭代器不支持 .send() 方法，则忽略
+            pass
+
+    def __next__(self):
+        return next(self.iterator)
+
+    def __iter__(self):
+        return self
+
+    def __len__(self):
+        if self.iterator_func == video_frame_iterator:
+            return self.frame_count
+        elif self.iterator_func == video_frame_iterator_by_time:
+            # TODO 待完善
+            return int((self.kwargs.get("end_time", self.frame_count / self.fps) * self.fps - self.kwargs.get("start_time",
+                                                                                                          0) * self.fps) // (self.kwargs.get(
+                "min_interval", 1 / self.fps) * self.fps) + 1)
+        elif self.iterator_func == video_frame_iterator_by_frame:
+            return (self.kwargs.get("end_frame", self.frame_count) - self.kwargs.get("start_frame",
+                                                                                     0)) // self.kwargs.get(
+                "min_interval", 1) + 1
+
+    def make_video_writer(self, output_video_path):
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        return cv2.VideoWriter(output_video_path, fourcc, self.fps, (self.width, self.height))
+
+
 if __name__ == '__main__':
-    v = "/data/videos/pingpong_250227/5105247089-20231215154838_sc99_01.mp4"
-    iter = video_frame_iterator_by_time(v, min_interval=60, start_time=0, end_time=1000)
-    with StreamManager(iter) as ss:
-        for frame_index, current_time, frame in ss:
+    from tqdm import tqdm
+
+    v = r"D:\Code\aigc-event-highlights\tennis\tennis.mkv"
+    with VideoToFrameIterator(video_frame_iterator_by_time, v, min_interval=2, start_time=0, end_time=100) as v:
+        for frame_index, current_time, frame in tqdm(v):
             print(frame_index)
+    # iter = video_frame_iterator_by_time(v, min_interval=60, start_time=0, end_time=1000)
+    # with StreamManager(iter) as ss:
+    #     for frame_index, current_time, frame in ss:
+    #         print(frame_index)
