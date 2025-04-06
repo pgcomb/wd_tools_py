@@ -6,11 +6,11 @@ def to_font_size(height, thickness=1):
     return round((height - thickness // 2 - 1) / 21, 1)
 
 
-def cv_draw_rect(image: np.ndarray, box: list | np.ndarray, bg_color=None, outline_color=(255, 0, 0),
-                 outline_width=1, label_text=None, label_bg_color=(255, 0, 0),
-                 label_color=(255, 255, 255),  # 新增参数：标签文本颜色，默认白色
-                 label_size=20,  # 字的高
-                 box_mode='xyxy'):
+def draw_rect(image: np.ndarray, box: list | np.ndarray, bg_color=None, outline_color=(255, 0, 0),
+              outline_width=1, label_text=None, label_bg_color=(255, 0, 0),
+              label_color=(255, 255, 255),  # 新增参数：标签文本颜色，默认白色
+              label_size=20,  # 字的高
+              box_mode='xyxy', alpha=None):
     """
     在图上画一个框以及附带一个标签(可选)
     :param image: 输入的图像（numpy数组）
@@ -23,8 +23,11 @@ def cv_draw_rect(image: np.ndarray, box: list | np.ndarray, bg_color=None, outli
     :param label_color: 标签文本颜色（RGB，默认白色）
     :param label_size: 标签字体大小（默认0.5）
     :param box_mode: 坐标格式（'xyxy'、'xywh'、'cxywh'）
+    :param alpha 透明度
     :return: 绘制后的图像（numpy数组）
     """
+    if alpha is not None:
+        ori_image = image.copy()
     label_size = to_font_size(label_size, 1)
 
     def process_color(color):
@@ -101,11 +104,14 @@ def cv_draw_rect(image: np.ndarray, box: list | np.ndarray, bg_color=None, outli
         text_y = label_y2 - baseline
         cv2.putText(image, label_text, (label_x1, text_y), font, label_size, label_color_bgr[:3], 1)
 
+    if alpha is not None:
+        image = (1 - alpha) * ori_image + alpha * image
+        image = image.astype(np.uint8)
     return image
 
 
-def cv_draw_circle(image: np.ndarray, circle: list | np.ndarray, bg_color=None, outline_color=None, outline_width=1,
-                   label_text=None, label_bg_color=None, label_color=None, label_size=20, circle_mode='xyxy'):
+def draw_circle(image: np.ndarray, circle: list | np.ndarray, bg_color=None, outline_color=None, outline_width=1,
+                label_text=None, label_bg_color=None, label_color=None, label_size=20, circle_mode='xyxy', alpha=None):
     """
     在图像上绘制一个圆及可选标签
     :param image: 输入图像（numpy数组）
@@ -122,8 +128,17 @@ def cv_draw_circle(image: np.ndarray, circle: list | np.ndarray, bg_color=None, 
         - 'xywh'：左上坐标+宽高
         - 'cxywh'：中心坐标+宽高（半径取宽高的最小值的一半）
         - 'cxyr'：中心坐标+半径（直接指定半径）
+    :param alpha 透明度
     :return: 绘制后的图像
     """
+
+    if outline_color is None and bg_color is None:
+        outline_color = (255, 0, 0)
+    if label_text is not None and label_color is None and label_bg_color is None:
+        label_color = (255, 255, 255)
+        label_bg_color = (255, 0, 0)
+    if alpha is not None:
+        ori_image = image.copy()
 
     def process_color(color):
         """处理颜色参数（RGB转BGR）"""
@@ -208,7 +223,7 @@ def cv_draw_circle(image: np.ndarray, circle: list | np.ndarray, bg_color=None, 
     # 处理标签
     if label_text is not None:
         font = cv2.FONT_HERSHEY_SIMPLEX
-        (text_width, text_height), baseline = cv2.getTextSize(label_text, font, label_size, 1)
+        (text_width, text_height), baseline = cv2.getTextSize(label_text, font, to_font_size(label_size, 1), 1)
 
         # 标签位置计算（默认在圆上方）
         label_x_center = center[0]
@@ -239,11 +254,13 @@ def cv_draw_circle(image: np.ndarray, circle: list | np.ndarray, bg_color=None, 
         text_x = label_x_center - text_width // 2
         text_y = label_y2 - baseline
         cv2.putText(image, label_text, (text_x, text_y), font, to_font_size(label_size, 1), label_color_bgr[:3], 1)
-
+    if alpha is not None:
+        image = (1 - alpha) * ori_image + alpha * image
+        image = image.astype(np.uint8)
     return image
 
 
-def cv_draw_polyline(image, segments, color=(0, 255, 0), thickness=2):
+def draw_polyline(image, segments, color=(0, 255, 0), thickness=2, alpha=None):
     """
     在图像上绘制多段线
 
@@ -252,9 +269,12 @@ def cv_draw_polyline(image, segments, color=(0, 255, 0), thickness=2):
         segments (list): 线段列表，格式为 [[[x1,y1],[x2,y2]], [[x3,y3],[x4,y4]], ...]
         color (tuple): BGR颜色格式（默认绿色）
         thickness (int): 线条粗细（默认2像素）
+        param alpha 透明度
     返回:
         numpy.ndarray: 绘制后的图像
     """
+    if alpha is not None:
+        ori_image = image.copy()
     for segment in segments:
         # 检查线段是否有效（包含两个点）
         if len(segment) != 2:
@@ -266,7 +286,9 @@ def cv_draw_polyline(image, segments, color=(0, 255, 0), thickness=2):
 
         # 绘制线段
         cv2.line(image, pt1, pt2, color, thickness)
-
+    if alpha is not None:
+        image = (1 - alpha) * ori_image + alpha * image
+        image = image.astype(np.uint8)
     return image
 
 
@@ -280,7 +302,7 @@ def add_multiline_text_to_image(
         thickness=1,
         x_offset=10,
         y_offset=20,
-        line_spacing=1
+        line_spacing=1, alpha=None
 ):
     """
     在图像左上角绘制多行文字
@@ -296,8 +318,10 @@ def add_multiline_text_to_image(
     x_offset: 左边距
     y_offset: 上边距
     line_spacing: 行间距
+    param alpha 透明度
     """
-
+    if alpha is not None:
+        ori_image = image.copy()
     # 将输入文本转换为列表
     if isinstance(text, str):
         lines = text.split('\n')
@@ -339,5 +363,19 @@ def add_multiline_text_to_image(
 
         # 更新current_y到下一行位置
         current_y += (text_height + line_spacing)
-
+    if alpha is not None:
+        img = (1 - alpha) * ori_image + alpha * img
+        img = img.astype(np.uint8)
     return img
+
+
+if __name__ == '__main__':
+    import cv2
+
+    image = cv2.imread(r'D:\codes\projects\python240409\tennis\1.jpg')
+    image = draw_rect(image, box=[200, 200, 500, 500], alpha=0.5, label_text='222')
+    image = draw_circle(image, circle=[200, 200, 500, 500],bg_color=(255,0,0), alpha=0.5, label_text='111')
+    image = draw_polyline(image, segments=[[[0, 0], [200, 200]],[[200,200],[500,200]]],alpha=0.5)
+    image = add_multiline_text_to_image(image,text='111\n2343',alpha=0.5)
+    cv2.imshow('image', image)
+    cv2.waitKey(0)

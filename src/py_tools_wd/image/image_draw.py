@@ -42,8 +42,8 @@ def paste_text(image: Image, xy, text, font, font_color=(255, 0, 0, 255), anchor
         draw.text(xy=(x, y), fill=font_color, font=font, text=text, anchor=anchor)
     return image, (x, y, x + text_w, y + text_h)
 
-
-default_font = get_font('AlibabaPuHuiTi-3-65-Medium.ttf', 10)
+font_path = files("py_tools_wd.image").joinpath("AlibabaPuHuiTi-3-65-Medium.ttf").as_posix()
+default_font = get_font(font_path, 10)
 
 
 def paste_box(image: Image, xyxy, bg_color=None, outline_color=None, outline_width=1, label_text=None,
