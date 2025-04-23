@@ -183,6 +183,7 @@ class VideoToFrameIterator:
         self.length = int((end_frame - start_frame) // (min_interval + 1) + 1)
 
         if tqdm_enable:
+            from tqdm import tqdm
             self.tqdm_c = tqdm(total=self.__len__(), unit='frame', desc=f'{os.path.basename(video_path)}')
         else:
             self.tqdm_c = None
