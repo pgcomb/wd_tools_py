@@ -267,12 +267,13 @@ def draw_polyline(image, segments, color=(0, 255, 0), thickness=2, alpha=None):
     参数:
         image (numpy.ndarray): 输入图像（NumPy数组）
         segments (list): 线段列表，格式为 [[[x1,y1],[x2,y2]], [[x3,y3],[x4,y4]], ...]
-        color (tuple): BGR颜色格式（默认绿色）
+        color (tuple): RGB颜色格式（默认绿色）
         thickness (int): 线条粗细（默认2像素）
         param alpha 透明度
     返回:
         numpy.ndarray: 绘制后的图像
     """
+    color = color[::-1]
     if alpha is not None:
         ori_image = image.copy()
     for segment in segments:
@@ -310,9 +311,9 @@ def add_multiline_text_to_image(
     参数:
     img: 输入的numpy图像数组
     text: 字符串（用换行分割）或字符串列表
-    font_color: 字体颜色 (BGR格式)
+    font_color: 字体颜色 (RGB格式)
     font_size: 字体高度（像素）
-    bg_color: 背景颜色 (BGR格式)
+    bg_color: 背景颜色 (RGB格式)
     font_face: OpenCV字体类型
     thickness: 字体粗细
     x_offset: 左边距
@@ -320,6 +321,8 @@ def add_multiline_text_to_image(
     line_spacing: 行间距
     param alpha 透明度
     """
+    font_color  = font_color[::-1]
+    bg_color  = bg_color[::-1]
     if alpha is not None:
         ori_image = image.copy()
     # 将输入文本转换为列表

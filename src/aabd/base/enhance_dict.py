@@ -62,6 +62,12 @@ class NoneEnhance:
         return False
 
 
+def value_or_default(value, default=None):
+    if isinstance(value, NoneEnhance):
+        return default
+    return value
+
+
 def read_prefixed_env_vars(prefix):
     """
     读取以指定前缀开头的环境变量，并将其转换为小写、嵌套的字典。
@@ -79,20 +85,33 @@ def read_prefixed_env_vars(prefix):
             stripped_key = key[len(prefix):].lower()
             # 使用双下划线分割各个部分
             parts = stripped_key.split('__')
-            if len(parts) > 1:
-                current_level = result
-                for part in parts[:-1]:
-                    if part not in current_level:
-                        current_level[part] = {}
-                    current_level = current_level[part]
-                # 设置最终值
-                try:
-                    namespace = {}
-                    exec(f'data={value}', namespace)
-                    data = namespace['data']
-                    current_level[parts[-1]] = data
-                except:
-                    print(f"Error parsing value for key {key}: {value}")
-                    pass
+
+            current_level = result
+            for part in parts[:-1]:
+                if part not in current_level:
+                    current_level[part] = {}
+                current_level = current_level[part]
+
+            # 尝试将字符串值解析为Python数据类型
+            try:
+                namespace = {}
+                exec(f'data={value}', namespace)
+                data = namespace['data']
+            except:
+                data = value  # 如果解析失败则保留原始字符串
+
+            # 设置最终值
+            current_level[parts[-1]] = data
+
+            # 如果parts长度为1，则直接设置在result上
+            if len(parts) == 1:
+                result[stripped_key] = data
 
     return result
+
+
+if __name__ == '__main__':
+    import os
+
+    os.environ['APP_TEST'] = '12'
+    print(read_prefixed_env_vars('APP_'))
