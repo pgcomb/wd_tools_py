@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aabd"    # PyPI上的包名（全局唯一）
+version = "0.3.4"            # 版本号（如 0.1.0）
+description = "wdx tools"
+readme = "README.md"         # 项目说明文件路径
+requires-python = ">=3.9"
+authors = [
+    { name = "wangdongxu", email = "wangdongxudyx@163.com" }
+]
+license = { text = "Apache-2.0" }
+dependencies = [               # 依赖项列表
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]                # 包搜索路径（根目录）
+
+[tool.setuptools]
+# 确保 include_package_data = true
+include-package-data = true
+
+# 显式声明需要包含的文件类型（如 .ttf）
+[tool.setuptools.package-data]
+"aabd.image" = ["*.ttf"]
