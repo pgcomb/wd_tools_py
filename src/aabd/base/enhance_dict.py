@@ -1,6 +1,23 @@
 import os
 
 
+def update_nested_dict(original, updates):
+    """
+    递归更新嵌套字典，存在的 key 替换，不存在的保留。
+    :param original: 原始字典（会被修改）
+    :param updates: 要更新的内容（新字典）
+    :return: 更新后的原始字典
+    """
+    for key, value in updates.items():
+        if isinstance(value, dict) and key in original and isinstance(original[key], dict):
+            # 如果原字典中有该 key 且都是 dict，递归处理
+            update_nested_dict(original[key], value)
+        else:
+            # 否则直接覆盖或新增
+            original[key] = value
+    return original
+
+
 class EnhanceDict(dict):
     def __init__(self, data=None):
         # 初始化时将输入数据转换为 ConfigDict 类型
@@ -40,9 +57,8 @@ class EnhanceDict(dict):
             value = EnhanceDict(value)
         super().__setitem__(key, value)
 
-    def update_from(self, *others):
-        for o in others:
-            self.update(o)
+    def update_from(self, other):
+        self.update(update_nested_dict(dict(self), dict(other)))
 
     def get(self, key, default=None):
         """
@@ -113,5 +129,7 @@ def read_prefixed_env_vars(prefix):
 if __name__ == '__main__':
     import os
 
-    os.environ['APP_TEST'] = '12'
-    print(read_prefixed_env_vars('APP_'))
+    data = EnhanceDict({"a": {"b": 1,"d":23},"f":3})
+    print(data)
+    data.update_from({"a": {"b": 2,"d":32323},"e":12})
+    print(data)

@@ -6,7 +6,7 @@ logging_formats = {
     0: '%(message)s',
     1: '%(asctime)s - %(message)s',
     2: '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    3: "[%(asctime)s] [%(process)d] [%(levelname)s] - %(module)s.%(funcName)s (%(filename)s:%(lineno)d) - %(message)s",
+    3: "[%(asctime)s] [%(process)d] [%(threadName)s] [%(levelname)s] - %(module)s.%(funcName)s (%(filename)s:%(lineno)d) - %(message)s",
 }
 
 global_log_type = os.getenv('APP_LOG_TYPE', 'console')
@@ -85,7 +85,7 @@ def set_global_logger(log_type=None, log_level=None, log_dir=None, log_format=No
     sys.stderr = LoggerWriter(logging.error)
 
 
-def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_format=0, sub_dir=''):
+def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_format=0, sub_dir='', propagate=False):
     from logging.handlers import TimedRotatingFileHandler
     log_type = log_type or global_log_type
     level = log_level or global_level
@@ -105,6 +105,9 @@ def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_form
     logging_formatter = logging.Formatter(fr)
     handlers = []
 
+    if isinstance(log_type, str):
+        log_type = log_type.split(',')
+
     if 'single_file' in log_type:
         os.makedirs(os.path.join(log_dir, sub_dir), exist_ok=True)
         single_file_handler = logging.FileHandler(os.path.join(log_dir, sub_dir, f'{name}.log'))
@@ -117,7 +120,7 @@ def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_form
                                                      backupCount=30)
         info_file_handler.setFormatter(logging_formatter)
         handlers.append(info_file_handler)
-        error_file_handler = TimedRotatingFileHandler(filename=os.path.join(log_dir, sub_dir, f'{name}error.log'),
+        error_file_handler = TimedRotatingFileHandler(filename=os.path.join(log_dir, sub_dir, f'{name}.error.log'),
                                                       when="MIDNIGHT",
                                                       interval=1,
                                                       backupCount=30)
@@ -134,4 +137,64 @@ def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_form
     logger.setLevel(level)
     for handler in handlers:
         logger.addHandler(handler)
+    logger.propagate = propagate
+    return logger
+
+
+def get_set_once_logger(name="app", log_type=None, log_level=None, log_dir=None, log_format=0, sub_dir='',
+                        propagate=False):
+    logger = logging.getLogger(name)
+    if logger.hasHandlers():
+        return logger
+    from logging.handlers import TimedRotatingFileHandler
+    log_type = log_type or global_log_type
+    level = log_level or global_level
+    if level == 'DEBUG':
+        level = logging.DEBUG
+    elif level == 'ERROR':
+        level = logging.ERROR
+    else:
+        level = logging.INFO
+    log_dir = log_dir or global_log_dir
+    if isinstance(log_format, str):
+        fr = log_format
+    elif isinstance(log_format, int) and log_format in logging_formats:
+        fr = logging_formats[log_format]
+    else:
+        fr = logging_formats[1]
+    logging_formatter = logging.Formatter(fr)
+    handlers = []
+
+    if isinstance(log_type, str):
+        log_type = log_type.split(',')
+
+    if 'single_file' in log_type:
+        os.makedirs(os.path.join(log_dir, sub_dir), exist_ok=True)
+        single_file_handler = logging.FileHandler(os.path.join(log_dir, sub_dir, f'{name}.log'))
+        handlers.append(single_file_handler)
+    if 'file' in log_type:
+        os.makedirs(log_dir, exist_ok=True)
+        info_file_handler = TimedRotatingFileHandler(filename=os.path.join(log_dir, sub_dir, f'{name}.log'),
+                                                     when="MIDNIGHT",
+                                                     interval=1,
+                                                     backupCount=30)
+        info_file_handler.setFormatter(logging_formatter)
+        handlers.append(info_file_handler)
+        error_file_handler = TimedRotatingFileHandler(filename=os.path.join(log_dir, sub_dir, f'{name}.error.log'),
+                                                      when="MIDNIGHT",
+                                                      interval=1,
+                                                      backupCount=30)
+        error_file_handler.setFormatter(logging_formatter)
+        error_file_handler.setLevel(logging.ERROR)
+        handlers.append(error_file_handler)
+    if 'console' in log_type:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(level)
+        console_handler.setFormatter(logging_formatter)
+        handlers.append(console_handler)
+
+    logger.setLevel(level)
+    for handler in handlers:
+        logger.addHandler(handler)
+    logger.propagate = propagate
     return logger
