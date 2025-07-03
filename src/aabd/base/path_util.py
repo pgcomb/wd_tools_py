@@ -44,7 +44,7 @@ def to_absolute_path(path):
             return abs_path
 
     if project_path is not None:
-        abs_path = cwd_path / path
+        abs_path = project_path / path
         if abs_path.exists():
             return abs_path
 

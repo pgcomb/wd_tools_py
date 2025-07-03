@@ -141,35 +141,35 @@ def log(message, key, logger=None):
         print(log_message)
 
 
-# 示例用法
-if __name__ == "__main__":
-    # 使用装饰器为函数计时，默认 key 为函数名，自动停止计时器
-    @timer()
-    def example_function():
-        time.sleep(1)
-        checkpoint_timer("example_function", "After sleep 1 second")
-
-        time.sleep(2)
-        checkpoint_timer("example_function", "After sleep 2 seconds")
-
-
-    # 调用被装饰的函数
-    example_function()
-
-
-    # 使用装饰器为函数计时，但不自动停止计时器
-    @timer(auto_stop=False)
-    def long_running_task():
-        time.sleep(1)
-        checkpoint_timer("long_running_task", "Task in progress...")
-
-
-    # 调用被装饰的函数
-    long_running_task()
-
-    # 手动打印总耗时并停止计时器
-    total_elapsed_timer("long_running_task")
-    stop_timer("long_running_task")
+# # 示例用法
+# if __name__ == "__main__":
+#     # 使用装饰器为函数计时，默认 key 为函数名，自动停止计时器
+#     @timer()
+#     def example_function():
+#         time.sleep(1)
+#         checkpoint_timer("example_function", "After sleep 1 second")
+#
+#         time.sleep(2)
+#         checkpoint_timer("example_function", "After sleep 2 seconds")
+#
+#
+#     # 调用被装饰的函数
+#     example_function()
+#
+#
+#     # 使用装饰器为函数计时，但不自动停止计时器
+#     @timer(auto_stop=False)
+#     def long_running_task():
+#         time.sleep(1)
+#         checkpoint_timer("long_running_task", "Task in progress...")
+#
+#
+#     # 调用被装饰的函数
+#     long_running_task()
+#
+#     # 手动打印总耗时并停止计时器
+#     total_elapsed_timer("long_running_task")
+#     stop_timer("long_running_task")
 
 
 def log_execution_time(description=None, logger=None):
@@ -248,3 +248,30 @@ class LogExecutionTime:
             self.logger.info(f"EXECUTION_TIME({formatted_description or 'DEF'}): {elapsed_time:.6f}s")
         else:
             print(f"EXECUTION_TIME({formatted_description or 'DEF'}): {elapsed_time:.6f}s\n")
+
+
+class LogTimer:
+    def __init__(self, description=None, logger=None):
+        self.description = description or 'default'
+        self.logger = logger.info if logger else lambda x: print(x)
+        self.time_list = []
+
+    def __enter__(self):
+        self.time_list.append(time.time())
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.time_list.append(time.time())
+        self.logger(f'TIMER_LOG: {self.description} use time {self.time_list[1] - self.time_list[0]:.4f}s')
+
+
+def log_timer(description=None, logger=None):
+    return LogTimer(description, logger)
+
+
+if __name__ == '__main__':
+    from aabd.base.log_setting import get_set_once_logger
+
+    logger = get_set_once_logger(propagate=False)
+    with log_timer(description='abc'):
+        time.sleep(1)

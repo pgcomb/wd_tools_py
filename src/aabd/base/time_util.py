@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+
 time_str_format = ['%Y-%m-%d %H:%M:%S.%f',
                    '%Y-%m-%d %H:%M:%S',
                    '%Y-%m-%d',
@@ -36,6 +37,43 @@ def ms_to_str(milliseconds, split_char=':'):
     hours, minutes = divmod(minutes, 60)
 
     return f"{hours:02d}{split_char}{minutes:02d}{split_char}{seconds:02d}.{milliseconds:03d}"
+
+
+def ms_to_str_auto(milliseconds, include_split_char=True, include_ms=True):
+    milliseconds = int(milliseconds)
+
+    # 判断是否需要包含毫秒部分
+    if not include_ms:
+        milliseconds_part = ''
+    else:
+        if include_split_char:
+            milliseconds_part = f".{milliseconds % 1000:03d}"
+        else:
+            milliseconds_part = f"{milliseconds % 1000:03d}"
+
+    # 如果毫秒数大于等于1970年（63115200000）则视为完整时间戳
+    if milliseconds >= 63115200000:
+        end_date = datetime(1970, 1, 1) + timedelta(milliseconds=milliseconds)
+
+        if include_split_char:
+            formatted_time = end_date.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            formatted_time = end_date.strftime("%Y%m%d%H%M%S")
+
+        return f"{formatted_time}{milliseconds_part}"
+
+    else:
+        # 否则表示时间段，只显示时分秒
+        seconds, millis = divmod(milliseconds, 1000)
+        minutes, seconds = divmod(seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+
+        if include_split_char:
+            time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        else:
+            time_str = f"{hours:02d}{minutes:02d}{seconds:02d}"
+
+        return f"{time_str}{milliseconds_part}"
 
 
 def ms_to_str_auto(milliseconds, include_split_char=True, include_ms=True):

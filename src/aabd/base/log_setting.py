@@ -113,7 +113,7 @@ def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_form
         single_file_handler = logging.FileHandler(os.path.join(log_dir, sub_dir, f'{name}.log'))
         handlers.append(single_file_handler)
     if 'file' in log_type:
-        os.makedirs(log_dir, exist_ok=True)
+        os.makedirs(os.path.join(log_dir, sub_dir), exist_ok=True)
         info_file_handler = TimedRotatingFileHandler(filename=os.path.join(log_dir, sub_dir, f'{name}.log'),
                                                      when="MIDNIGHT",
                                                      interval=1,
@@ -173,7 +173,7 @@ def get_set_once_logger(name="app", log_type=None, log_level=None, log_dir=None,
         single_file_handler = logging.FileHandler(os.path.join(log_dir, sub_dir, f'{name}.log'))
         handlers.append(single_file_handler)
     if 'file' in log_type:
-        os.makedirs(log_dir, exist_ok=True)
+        os.makedirs(os.path.join(log_dir, sub_dir), exist_ok=True)
         info_file_handler = TimedRotatingFileHandler(filename=os.path.join(log_dir, sub_dir, f'{name}.log'),
                                                      when="MIDNIGHT",
                                                      interval=1,
