@@ -71,7 +71,7 @@ def to_absolute_path_str(path):
             return abs_path.as_posix()
 
     if project_path is not None:
-        abs_path = cwd_path / path
+        abs_path = project_path / path
         if abs_path.exists():
             return abs_path.as_posix()
 
