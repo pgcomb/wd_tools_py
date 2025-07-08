@@ -1,3 +1,5 @@
+import json
+import math
 import time
 from abc import abstractmethod
 import logging
@@ -55,28 +57,29 @@ class StreamDecoder:
             self.width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             self.fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             if abs(self.fps - 25) < 0.2:
                 self.fps = 25.
             elif abs(self.fps - 30) < 0.2:
                 self.fps = 30.
 
-            self.ori_start = start
-            self.ori_end = end
+            # self.ori_start = start
+            # self.ori_end = end
             self.ori_max_fps = max_fps or self.fps
             self.target_fps = min(self.ori_max_fps, self.fps)
             self.total_frame = None
             if not self.is_live and control_type == 'frame':
                 self.start_frame = start
                 self.start_time = start / self.fps * 1000
-                self.end_frame = end or int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                self.end_frame = end if end is not None and end <= frame_count else frame_count
                 self.end_time = self.end_frame / self.fps * 1000
                 self.total_frame = self.end_frame - self.start_frame
             elif not self.is_live and control_type == 'time':
                 self.start_frame = int(start / 1000 * self.fps)
                 self.start_time = start
-                self.end_frame = int(end / 1000 * self.fps) if end is not None else int(
-                    cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                self.end_time = end or self.end_frame / self.fps * 1000
+                self.end_frame = int(end / 1000 * self.fps) if end is not None else frame_count
+                self.end_frame = min(self.end_frame, frame_count)
+                self.end_time = self.end_frame / self.fps * 1000
                 self.total_frame = self.end_frame - self.start_frame
             elif self.is_live and control_type == 'frame':
                 # self.start_frame = start
@@ -153,7 +156,7 @@ class StreamDecoder:
 
     def __len__(self):
         if self.total_frame:
-            return int(self.total_frame / self.fps * self.target_fps)
+            return math.ceil(self.total_frame / self.fps * self.target_fps)
         else:
             return 0
 
@@ -174,9 +177,13 @@ class SDKStreamDecoder(StreamDecoder):
 
         ori_frame_count = 0
         target_frame_count = 0
-
+        seek_idx = 0
         try:
             while True:
+                if self.stop_flag:
+                    break
+
+                # 如果帧数够了停止
                 if self.total_frame is not None and ori_frame_count >= self.total_frame:
                     break
                 tensor = xvdecoder.decode_frame_to_tensor()
@@ -190,11 +197,9 @@ class SDKStreamDecoder(StreamDecoder):
                     else:
                         time.sleep(0.1)
                         continue
-                if ori_frame_count < self.start_frame:
+                if seek_idx < self.start_frame:
+                    seek_idx += 1
                     continue
-
-                if self.end_frame is not None and ori_frame_count >= self.end_frame:
-                    break
 
                 next_time_point = target_frame_count / self.target_fps * 1000
                 current_time_point = int(ori_frame_count / self.fps * 1000)
@@ -209,15 +214,14 @@ class SDKStreamDecoder(StreamDecoder):
                         'offset_idx': self.start_frame,
                         'offset_time': self.start_time,
                         'src_frame_idx': ori_frame_count,
-                        'src_frame_time': current_time_point,
+                        'src_frame_time': round(current_time_point),
                         'target_frame_idx': target_frame_count,
                         'frame': image_tensor,
                         # 'target_frame_time': target_frame_count * 1000 / target_fps,
                         'sei': sei_msg,
                     }
                     yield data
-                    if self.stop_flag or (self.end_frame is not None and self.end_frame <= ori_frame_count):
-                        return
+
                     target_frame_count += 1
                 ori_frame_count += 1
 
@@ -319,24 +323,30 @@ class AVStreamDecoder(StreamDecoder):
 
             target_fps = min(self.ori_max_fps, self.fps)
 
-            ori_frame_count = 0
-            target_frame_count = 0
             if self.frame_type == "tensor":
                 from torchvision import transforms
                 to_tensor = transforms.ToTensor()
 
             # 需要seek
             seek_tag = self.start_time is not None and self.start_time > 0
-            for frame in container.decode(stream):
 
+            ori_frame_count = 0
+            target_frame_count = 0
+            for frame in container.decode(stream):
+                # 遇到停止标识停止
+                if self.stop_flag:
+                    break
+
+                # 由于seek只是到关键帧需要继续到指定位置
                 if seek_tag and float(frame.time * 1000) < self.start_time:
                     continue
                 seek_tag = False
 
+                # 如果帧数够了停止
                 if self.total_frame is not None and ori_frame_count >= self.total_frame:
                     break
-                next_time_point = target_frame_count / target_fps * 1000
-                current_time_point = int(ori_frame_count / self.fps * 1000)
+                next_time_point = round(target_frame_count / self.target_fps * 1000)
+                current_time_point = round(ori_frame_count / self.fps * 1000)
 
                 if current_time_point >= next_time_point:
                     sei_message_str = None
@@ -391,15 +401,15 @@ class AVStreamDecoder(StreamDecoder):
                         'offset_idx': self.start_frame,
                         'offset_time': self.start_time,
                         'src_frame_idx': ori_frame_count,
-                        'src_frame_time': current_time_point,
+                        'src_frame_time': round(current_time_point),
                         'target_frame_idx': target_frame_count,
                         'frame': final_frame,
                         # 'target_frame_time': target_frame_count * 1000 / target_fps,
                         'sei': sei_message_str,
                     }
                     yield data
-                    if self.stop_flag or (self.end_frame is not None and self.end_frame <= ori_frame_count):
-                        return
+                    # if self.stop_flag or (self.end_frame is not None and self.end_frame <= ori_frame_count):
+                    #     return
                     target_frame_count += 1
                 ori_frame_count += 1
 
@@ -443,6 +453,11 @@ class CVStreamDecoder(StreamDecoder):
 
             # 逐帧读取
             while True:
+                # 遇到停止标识停止
+                if self.stop_flag:
+                    break
+
+                # 如果帧数够了停止
                 if self.total_frame is not None and ori_frame_count >= self.total_frame:
                     break
 
@@ -450,8 +465,8 @@ class CVStreamDecoder(StreamDecoder):
                 if not ret:
                     break
 
-                current_time_point = (ori_frame_count / self.fps) * 1000
-                next_time_point = (target_frame_count / self.target_fps) * 1000
+                next_time_point = round(target_frame_count / self.target_fps * 1000)
+                current_time_point = round(ori_frame_count / self.fps * 1000)
 
                 if current_time_point >= next_time_point:
                     sei_message_str = None  # OpenCV 不支持提取 SEI 消息
@@ -477,68 +492,67 @@ class CVStreamDecoder(StreamDecoder):
                         'offset_idx': self.start_frame,
                         'offset_time': self.start_time,
                         'src_frame_idx': ori_frame_count,
-                        'src_frame_time': current_time_point,
+                        'src_frame_time': round(current_time_point),
                         'target_frame_idx': target_frame_count,
                         'frame': final_frame,
                         'sei': sei_message_str,
                     }
                     yield data
 
-                    # 检查是否停止
-                    if self.stop_flag or (self.end_frame is not None and self.end_frame <= ori_frame_count):
-                        break
                     target_frame_count += 1
                 ori_frame_count += 1
         finally:
             cap.release()  # 清理资源
 
 
+class MockStreamDecoder(StreamDecoder):
+    def __init__(self, video_path, start=0, end=None, max_fps=500, out_path=None, logger=def_logger, tqdm_enable=True,
+                 control_type='frame', is_live=None, to_device='cpu', frame_type='numpy_rgb', **kwargs):
+        self.to_device = to_device
+        super().__init__(video_path, start, end, max_fps, out_path, logger, tqdm_enable, control_type, is_live,
+                         frame_type, **kwargs)
+
+    def decode_iter(self):
+        # ori_frame_count = 0
+        target_frame_count = 0
+        for ori_frame_count in range(self.total_frame):
+            # 遇到停止标识停止
+            if self.stop_flag:
+                break
+            # 如果帧数够了停止
+            if self.total_frame is not None and ori_frame_count >= self.total_frame:
+                break
+            next_time_point = round(target_frame_count / self.target_fps * 1000)
+            current_time_point = round(ori_frame_count / self.fps * 1000)
+            if current_time_point >= next_time_point:
+                data = {
+                    'weight': self.width,
+                    'height': self.height,
+                    'src_fps': self.fps,
+                    'fps': self.target_fps,
+                    'offset_idx': self.start_frame,
+                    'offset_time': self.start_time,
+                    'src_frame_idx': ori_frame_count,
+                    'src_frame_time': round(ori_frame_count / self.target_fps * 1000),
+                    'target_frame_idx': target_frame_count,
+                    'frame': None,
+                    'sei': json.dumps({'utc': round(ori_frame_count / self.target_fps * 1000)}),
+                }
+                yield data
+                target_frame_count += 1
+
+
 if __name__ == '__main__':
-    from aabd.video.cv_tools import video_info
-    from aabd.base import log_setting
+    from aabd.base.log_setting import get_set_once_logger
+    from aabd.base.path_util import to_absolute_path_str
+    import os
 
-    logger0 = log_setting.set_logger(log_type=['console'])
-    # print(video_info('rtmp://192.168.0.16:1935/video/wdx111'))
-    # path = r'D:\Code\aigc-event-highlights\live-stream-ai-task-workline\files\football\062402.mp4'
-    path = fr'/data/wdxdev/projects/wd/gpu-ffmpeg/input.mp4'
-    # path = 'rtmp://192.168.0.16:1935/video/wdx111'
-    start_time = time.time()
-    # with AVStreamDecoder(path, max_fps=25, logger=logger0,
-    #                      # gpu_decoder=True,
-    #                      frame_type='tensor',
-    #                      to_device='cuda:0',
-    #                      # ffmpeg_path='/usr/local/ffmpeg',
-    #                      sei_key='4ba6172100025002'
-    #                      ) as decoder:
-    #     for i in decoder:
-    #         # pass
-    #         # cv2.imwrite(f'frames/av/{i["src_frame_idx"]}.png', tensor2numpy_bgr(i['frame']))
-    #         # cv2.imwrite(f'frames/av/{i["src_frame_idx"]}.png', i['frame'])
-    #         logger0.info(i['src_frame_idx'])
-
-    # with SDKStreamDecoder(path, logger=logger0,
-    #                       frame_type='tensor',
-    #                       to_device='cuda:0',
-    #                       sei_key='4ba6172100025002'
-    #                       ) as decoder:
-    #     for i in decoder:
-    #         # time.sleep(1)
-    #         # cv2.imwrite(f'frames/sdk/{i["src_frame_idx"]}.png', tensor2numpy_bgr(i['frame']))
-    #         logger0.info(i['src_frame_idx'])
-
-    from aabd.video import cv_tools
-
-    outer = cv_tools.make_video_writer_from_video(path, 'out.mp4')
-    with AVStreamDecoder(path, logger=logger0, start=10000, end=15000, control_type='time',
-                         frame_type='numpy_bgr',
-                         to_device='cuda:0',
-                         ) as (decoder, out):
+    os.environ['PROJECT_ROOT'] = os.path.abspath("../")
+    logger = get_set_once_logger(log_type=['console'])
+    with CVStreamDecoder(to_absolute_path_str('files/111.mp4'), start=1000, end=3000, max_fps=30, logger=logger,frame_type="numpy_bgr",control_type='time') as (
+            decoder,
+            _):
         for frame in decoder:
-            outer.write(frame['frame'])
-            cv2.imwrite(f'aaa/{frame["src_frame_idx"]}.jpg', frame['frame'])
-            # time.sleep(1)
-            # cv2.imwrite(f'frames/sdk/{i["src_frame_idx"]}.png', tensor2numpy_bgr(i['frame']))
+            cv2.imwrite(f'images/{frame["src_frame_idx"]}.png', frame['frame'])
             frame['frame'] = None
-            logger0.info(frame)
-    print(f'use:{time.time() - start_time}')
-    outer.release()
+            logger.info(frame)

@@ -15,7 +15,7 @@ def text_box(text, font):
 
 def paste_text(image: Image, xy, text, font, font_color=(255, 0, 0, 255), anchor='lt'):
     if isinstance(font, int):
-        font_path = files("py_tools_wd.image").joinpath("AlibabaPuHuiTi-3-65-Medium.ttf").as_posix()
+        font_path = files("aabd.image").joinpath("AlibabaPuHuiTi-3-65-Medium.ttf").as_posix()
         font = get_font(font_path, font)
     x, y = xy
     text_w, text_h = text_box(text=text, font=font)

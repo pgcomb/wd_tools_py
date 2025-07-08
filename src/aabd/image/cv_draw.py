@@ -321,8 +321,8 @@ def add_multiline_text_to_image(
     line_spacing: 行间距
     param alpha 透明度
     """
-    font_color  = font_color[::-1]
-    bg_color  = bg_color[::-1]
+    font_color = font_color[::-1]
+    bg_color = bg_color[::-1]
     if alpha is not None:
         ori_image = image.copy()
     # 将输入文本转换为列表
@@ -372,13 +372,51 @@ def add_multiline_text_to_image(
     return img
 
 
+def pad_image(img, top=0, bottom=0, left=0, right=0, color=(255, 255, 255)):
+    """
+    使用OpenCV读取图像并在四周填充给定像素或比例。
+
+    参数:
+        img: 图像路径
+        top, bottom, left, right: 填充值，小于1表示比例，大于等于1表示像素
+        color: 填充颜色 (B, G, R)
+
+    返回:
+        填充后的图像
+    """
+
+    height, width = img.shape[:2]
+
+    # 计算实际填充像素
+    def calc_pad(value, dim_size):
+        return int(value * dim_size) if value < 1 else int(value)
+
+    top_px = calc_pad(top, height)
+    bottom_px = calc_pad(bottom, height)
+    left_px = calc_pad(left, width)
+    right_px = calc_pad(right, width)
+
+    # 创建带填充的新图像
+    padded_img = cv2.copyMakeBorder(
+        img,
+        top=top_px,
+        bottom=bottom_px,
+        left=left_px,
+        right=right_px,
+        borderType=cv2.BORDER_CONSTANT,
+        value=color[::-1]  # 转换为BGR
+    )
+
+    return padded_img
+
+
 if __name__ == '__main__':
     import cv2
 
     image = cv2.imread(r'D:\codes\projects\python240409\tennis\1.jpg')
     image = draw_rect(image, box=[200, 200, 500, 500], alpha=0.5, label_text='222')
-    image = draw_circle(image, circle=[200, 200, 500, 500],bg_color=(255,0,0), alpha=0.5, label_text='111')
-    image = draw_polyline(image, segments=[[[0, 0], [200, 200]],[[200,200],[500,200]]],alpha=0.5)
-    image = add_multiline_text_to_image(image,text='111\n2343',alpha=0.5)
+    image = draw_circle(image, circle=[200, 200, 500, 500], bg_color=(255, 0, 0), alpha=0.5, label_text='111')
+    image = draw_polyline(image, segments=[[[0, 0], [200, 200]], [[200, 200], [500, 200]]], alpha=0.5)
+    image = add_multiline_text_to_image(image, text='111\n2343', alpha=0.5)
     cv2.imshow('image', image)
     cv2.waitKey(0)
