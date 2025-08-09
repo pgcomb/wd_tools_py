@@ -265,13 +265,23 @@ class LogTimer:
         self.logger(f'TIMER_LOG: {self.description} use time {self.time_list[1] - self.time_list[0]:.4f}s')
 
 
-def log_timer(description=None, logger=None):
-    return LogTimer(description, logger)
+class EmptyLogTimer:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+def log_timer(description=None, logger=None, enable=True):
+    if enable:
+        return LogTimer(description, logger)
+    else:
+        return EmptyLogTimer()
 
 
 if __name__ == '__main__':
     from aabd.base.log_setting import get_set_once_logger
 
-    logger = get_set_once_logger(propagate=False)
-    with log_timer(description='abc'):
+    with log_timer(description='abc', logger=get_set_once_logger(propagate=False)):
         time.sleep(1)
