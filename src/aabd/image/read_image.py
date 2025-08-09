@@ -1,5 +1,6 @@
 import tempfile
 
+import cv2
 import numpy as np
 from PIL import Image
 import base64
@@ -56,7 +57,10 @@ def _to_pil_image(data, input_format):
     if input_format == 'pillow':
         return data.copy()
     elif input_format == 'numpy':
-        return Image.fromarray(data)
+        if data.shape[2] == 4:
+            return Image.fromarray(cv2.cvtColor(data, cv2.COLOR_BGRA2RGBA))
+        else:
+            return Image.fromarray(cv2.cvtColor(data, cv2.COLOR_BGR2RGB))
     elif input_format == 'base64':
         try:
             img_data = base64.b64decode(data)
@@ -81,7 +85,11 @@ def _from_pil_image(pil_image, output_format, **kwargs):
     if output_format == 'pillow':
         return pil_image
     elif output_format == 'numpy':
-        return np.array(pil_image)
+        numpy_image = np.array(pil_image)
+        if numpy_image.shape[2] == 4:
+            return numpy_image[:, :, [2, 1, 0, 3]]
+        else:
+            return numpy_image[:, :, ::-1]
     elif output_format == 'base64':
         img_format = kwargs.get('format', 'PNG')
         buffered = BytesIO()
@@ -124,3 +132,8 @@ def to_pil(image):
 
 def to_file(image, path: str):
     return convert_image(image, 'filepath', save_path=path)
+
+
+if __name__ == '__main__':
+    a = to_pil(cv2.imread(r"D:\Code\oes-nryy-img-server\files\input\l.png"))
+    a.save("test.png")
