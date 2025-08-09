@@ -164,7 +164,6 @@ class StreamDecoder:
 class SDKStreamDecoder(StreamDecoder):
     def __init__(self, video_path, start=0, end=None, max_fps=500, out_path=None, logger=def_logger, tqdm_enable=True,
                  control_type='frame', is_live=None, frame_type='numpy_rgb', **kwargs):
-
         super().__init__(video_path, start, end, max_fps, out_path, logger, tqdm_enable, control_type, is_live,
                          frame_type, **kwargs)
 
@@ -204,9 +203,16 @@ class SDKStreamDecoder(StreamDecoder):
                 next_time_point = target_frame_count / self.target_fps * 1000
                 current_time_point = int(ori_frame_count / self.fps * 1000)
                 if current_time_point >= next_time_point:
-                    image_tensor = tensor.float() / 255.0
-                    image_tensor = image_tensor.permute(2, 0, 1)
-                    image_tensor = image_tensor[[2, 1, 0], :, :]
+                    if self.frame_type == 'numpy_bgr':
+                        image_data = tensor.cpu().numpy()[:, :, ::-1]
+                    elif self.frame_type == 'numpy_rgb':
+                        image_data = tensor.cpu().numpy()
+                    elif self.frame_type == 'tensor':
+                        image_data = tensor.float() / 255.0
+                        image_data = image_data.permute(2, 0, 1)
+                        # image_data = image_data[[2, 1, 0], :, :]
+                    else:
+                        image_data = None
                     sei_msg = xvdecoder.get_curr_sei_msg()
                     data = {
                         'src_fps': self.fps,
@@ -216,7 +222,7 @@ class SDKStreamDecoder(StreamDecoder):
                         'src_frame_idx': ori_frame_count,
                         'src_frame_time': round(current_time_point),
                         'target_frame_idx': target_frame_count,
-                        'frame': image_tensor,
+                        'frame': image_data,
                         # 'target_frame_time': target_frame_count * 1000 / target_fps,
                         'sei': sei_msg,
                     }
@@ -237,6 +243,7 @@ class AVStreamDecoder(StreamDecoder):
                  **kwargs):
         self.to_device = to_device
         self.gpu_decoder = gpu_decoder
+
         super().__init__(video_path, start, end, max_fps, out_path, logger, tqdm_enable, control_type, is_live,
                          frame_type, **kwargs)
 
@@ -549,7 +556,8 @@ if __name__ == '__main__':
 
     os.environ['PROJECT_ROOT'] = os.path.abspath("../")
     logger = get_set_once_logger(log_type=['console'])
-    with CVStreamDecoder(to_absolute_path_str('files/111.mp4'), start=1000, end=3000, max_fps=30, logger=logger,frame_type="numpy_bgr",control_type='time') as (
+    with CVStreamDecoder(to_absolute_path_str('files/111.mp4'), start=1000, end=3000, max_fps=30, logger=logger,
+                         frame_type="numpy_bgr", control_type='time') as (
             decoder,
             _):
         for frame in decoder:

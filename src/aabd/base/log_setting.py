@@ -144,7 +144,7 @@ def set_logger(name="app", log_type=None, log_level=None, log_dir=None, log_form
 def get_set_once_logger(name="app", log_type=None, log_level=None, log_dir=None, log_format=0, sub_dir='',
                         propagate=False):
     logger = logging.getLogger(name)
-    if logger.hasHandlers():
+    if len(logger.handlers) > 0:
         return logger
     from logging.handlers import TimedRotatingFileHandler
     log_type = log_type or global_log_type
