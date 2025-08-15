@@ -36,7 +36,8 @@ class KafkaMessageIterator:
             'max.poll.interval.ms': 3600000,
             'auto.offset.reset': "earliest",
         }
-        if sasl_plain_username and sasl_plain_password:
+        if sasl_plain_username is not None and len(sasl_plain_username) > 0 and sasl_plain_password is not None and len(
+                sasl_plain_password) > 0:
             self.conf['security.protocol'] = security_protocol
             self.conf['sasl.mechanism'] = sasl_mechanism
             self.conf['sasl.username'] = sasl_plain_username
@@ -51,8 +52,8 @@ class KafkaMessageIterator:
                                                                                   str) else value_deserializer
 
         # 注册信号处理，以便优雅退出
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+        # signal.signal(signal.SIGINT, self._signal_handler)
+        # signal.signal(signal.SIGTERM, self._signal_handler)
 
     def _signal_handler(self, signum, frame):
         self.logger.info(f"Received signal {signum}, shutting down...")
@@ -90,20 +91,23 @@ class KafkaMessageIterator:
             raise RuntimeError("Consumer not initialized.")
 
         # 轮询消息
-        msg = self.consumer.poll(timeout=1.0)
+        msg = None
+        while self.running:
+            msg = self.consumer.poll(timeout=5.0)
+            if msg is None:
+                continue
 
-        if msg is None:
-            # 没有消息，继续等待
-            return self.__next__()
-
-        if msg.error():
-            # 处理错误
-            if msg.error().code() == KafkaError._PARTITION_EOF:
-                # 到达分区末尾，继续等待新消息
-                return self.__next__()
-            else:
-                # 其他错误，抛出异常
-                raise KafkaException(msg.error())
+            if msg.error():
+                # 处理错误
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    # 到达分区末尾，继续等待新消息
+                    continue
+                else:
+                    # 其他错误，抛出异常
+                    raise KafkaException(msg.error())
+            break
+        if not self.running:
+            raise StopIteration
         try:
             value = self.value_deserializer(msg.value())
         except:
@@ -123,20 +127,21 @@ class KafkaProducer:
     def __init__(self, bootstrap_servers, sasl_plain_username=None, sasl_plain_password=None,
                  security_protocol="SASL_PLAINTEXT", sasl_mechanism="PLAIN", logger=None,
                  conf=None):
-        conf = conf or {}
+        if conf is None:
+            conf = {}
+        self.conf = {
+            'bootstrap.servers': bootstrap_servers,
+        }
         self.logger = logger or logging.getLogger('kafka_producer')
-        if security_protocol and sasl_mechanism:
-            self.producer = Producer({
-                "bootstrap.servers": bootstrap_servers,
-                'security.protocol': security_protocol,
-                'sasl.mechanism': sasl_mechanism,
-                'sasl.username': sasl_plain_username,
-                'sasl.password': sasl_plain_password
-            })
-        else:
-            self.producer = Producer({
-                "bootstrap.servers": bootstrap_servers
-            })
+        if sasl_plain_username is not None and len(sasl_plain_username) > 0 and sasl_plain_password is not None and len(
+                sasl_plain_password) > 0:
+            self.conf['security.protocol'] = security_protocol
+            self.conf['sasl.mechanism'] = sasl_mechanism
+            self.conf['sasl.username'] = sasl_plain_username
+            self.conf['sasl.password'] = sasl_plain_password
+
+        self.conf = {**self.conf, **conf}
+        self.producer = Producer(self.conf)
 
     def delivery_report(self, err, msg):
         """
@@ -171,7 +176,7 @@ class KafkaProducer:
                                   callback=self.delivery_report)
         except BufferError:
             self.logger.exception('Local producer queue is full (%d messages awaiting delivery): try again\n' %
-                  len(self.producer))
+                                  len(self.producer))
         except KafkaException:
             self.logger.exception(f'Failed to send message.')
 
@@ -187,10 +192,11 @@ class KafkaProducer:
 if __name__ == "__main__":
     # 创建生产者实例
     from aabd.base.log_setting import get_set_once_logger
+
     producer = KafkaProducer(bootstrap_servers='192.168.0.14:19092',
-                sasl_plain_username='admin',
-                sasl_plain_password='jdyx#qwe12',
-                logger=get_set_once_logger())
+                             sasl_plain_username='admin',
+                             sasl_plain_password='a',
+                             logger=get_set_once_logger())
 
     try:
         # 发送消息
@@ -212,7 +218,7 @@ if __name__ == "__main__":
 #                 group_id='wdx',
 #                 topic='wdx250809',
 #                 sasl_plain_username='admin',
-#                 sasl_plain_password='jdyx#qwe12',
+#                 sasl_plain_password='a',
 #                 value_deserializer='json',
 #                 logger=get_set_once_logger()
 #         ) as kafka_iter:
